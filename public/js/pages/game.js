@@ -32,9 +32,34 @@ export function render(app) {
 
     <div class="skills" id="skills"></div>
     <div class="target-hint hidden" id="targetHint">Tap the map to set target…</div>
+
+    <div class="rotate-overlay hidden" id="rotateOverlay">
+      <div class="rotate-box">
+        <div class="rotate-icon">📱⟳</div>
+        <h2>Rotate your device</h2>
+        <p>Pirate Wars is played in landscape mode</p>
+      </div>
+    </div>
   `;
 
+  bindOrientationGuard();
   start(app);
+}
+
+// The game must be played in landscape — block portrait play and refit the HUD.
+function bindOrientationGuard() {
+  const overlay = document.getElementById('rotateOverlay');
+  const check = () => {
+    const portrait = window.innerHeight > window.innerWidth;
+    overlay.classList.toggle('hidden', !portrait);
+    document.body.classList.toggle('portrait-block', portrait);
+  };
+  window.addEventListener('resize', check);
+  window.addEventListener('orientationchange', check);
+  if (screen.orientation && screen.orientation.addEventListener) {
+    screen.orientation.addEventListener('change', check);
+  }
+  check();
 }
 
 async function start(app) {
@@ -76,6 +101,7 @@ async function start(app) {
     armedSkill: null,
     cd: { attack: 0, shield: 0, s1: 0, s2: 0 },
     over: false,
+    power: 1 + lvlBonus * 0.15, // +15% skill damage per upgrade level
   };
 
   buildSkillButtons();

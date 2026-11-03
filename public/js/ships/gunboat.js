@@ -1,5 +1,6 @@
 // Ship: Gunboat — one file per ship. Edit this file to change the ship's
-// stats, price, skills or appearance without touching any other file.
+// stats, movement speed (speed), unique skills, price or appearance
+// without touching any other file. Upgrade levels scale speed/damage in-game.
 export default {
   id: 'gunboat',
   name: 'Gunboat',
