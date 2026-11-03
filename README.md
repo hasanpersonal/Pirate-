@@ -10,6 +10,13 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
+## Deploy to Render (static site)
+
+1. Push this repo to GitHub.
+2. In https://dashboard.render.com → **New → Static Site** (or Blueprint) → connect the repo.
+3. Render auto-detects `render.yaml`: publish directory `public/`, SPA rewrite to `index.html`.
+4. Deploy — you get a `https://pirate-wars.onrender.com` URL.
+
 ## Deploy to Firebase Hosting
 
 ```bash
@@ -19,11 +26,11 @@ firebase login
 firebase deploy --only hosting
 ```
 
-## Enable Firebase (accounts sync online)
+## Firebase (accounts sync online)
 
-1. Create a project at https://console.firebase.google.com and enable **Cloud Firestore**.
-2. Copy your web app config into `public/js/firebase-config.js`.
-3. Redeploy. Until then the game uses localStorage.
+- Config is already set in `public/js/firebase-config.js` (project **online-ha**).
+- In the Firebase console, enable **Cloud Firestore** (the game stores players in the `players` collection) and add your Render/Hosting domain to the authorized domains (Authentication → Settings → Authorized domains, if you use auth later).
+- If the config is ever removed, the game falls back to localStorage automatically.
 
 ## File map — change one thing by editing one file
 
