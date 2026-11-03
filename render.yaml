@@ -1,10 +1,12 @@
 # Render deploy config — static site served from public/
-# Create a "Static Site" (or Blueprint) in Render pointing at this repo;
-# Render reads this file automatically.
+# In the Render dashboard (New → Static Site), make sure:
+#   Publish Directory = public
+# (or deploy via Blueprint and Render reads this file automatically)
 services:
   - type: web
     name: pirate-wars
     runtime: static
+    buildCommand: ""
     staticPublishPath: public
     routes:
       - type: rewrite
