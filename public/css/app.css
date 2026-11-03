@@ -1,0 +1,72 @@
+/* Global theme — page-specific styles live in css/pages/<page>.css */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --gold: #ffd54a;
+  --diamond: #4dd8ff;
+  --hp: #ff5252;
+  --panel: rgba(8, 24, 48, 0.82);
+  --panel-border: rgba(120, 200, 255, 0.35);
+  --text: #eaf6ff;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #04121f;
+  color: var(--text);
+  font-family: "Segoe UI", Arial, sans-serif;
+  user-select: none;
+}
+
+#app { width: 100%; height: 100%; position: relative; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  color: var(--text);
+}
+
+.btn {
+  background: linear-gradient(180deg, #1e6fb8, #0d3f73);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 12px 22px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+}
+.btn:active { transform: scale(0.96); }
+.btn.gold { background: linear-gradient(180deg, #d8a520, #8a6410); }
+.btn.disabled { opacity: 0.45; pointer-events: none; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  backdrop-filter: blur(4px);
+}
+
+.back-btn {
+  position: absolute;
+  top: 14px; left: 14px;
+  z-index: 30;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 15px;
+}
+
+.currency {
+  display: flex; align-items: center; gap: 6px;
+  font-weight: 700; font-size: 16px;
+}
+.currency .coin {
+  width: 16px; height: 16px; border-radius: 50%;
+  display: inline-block;
+}
+.coin.gold { background: radial-gradient(circle at 35% 35%, #fff3b0, var(--gold) 60%, #9c7410); }
+.coin.diamond { background: radial-gradient(circle at 35% 35%, #d8f7ff, var(--diamond) 60%, #1a7ea0); border-radius: 4px; transform: rotate(45deg); }
