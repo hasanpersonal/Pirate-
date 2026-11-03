@@ -1,0 +1,31 @@
+.page-account .ocean-bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, #0a4d7a, #041a2c);
+}
+.account-wrap {
+  position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+  width: min(480px, calc(100% - 32px)); max-height: calc(100% - 90px);
+  overflow-y: auto; padding: 20px; z-index: 5;
+}
+.account-wrap h2 { margin-bottom: 8px; }
+.account-wrap h3 { margin: 16px 0 8px; color: var(--gold); }
+.code-row { font-size: 14px; opacity: 0.9; }
+.code-row b { color: var(--diamond); letter-spacing: 2px; }
+.level-row { margin: 6px 0 12px; font-size: 16px; }
+.level-row b { color: var(--gold); }
+.level-row .xp { font-size: 12px; opacity: 0.7; }
+.totals { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.totals .stat { font-size: 14px; }
+.owned-list { display: flex; flex-direction: column; gap: 6px; }
+.owned-ship {
+  background: rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 12px; font-size: 14px;
+}
+.search-row { display: flex; gap: 8px; }
+.search-row input {
+  flex: 1; background: rgba(0,0,0,0.35); color: var(--text);
+  border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px 12px;
+  font-size: 16px; text-transform: uppercase; letter-spacing: 2px;
+}
+.search-row .btn { padding: 10px 16px; }
+.found { margin-top: 10px; padding: 10px 12px; font-size: 14px; }
+.not-found { margin-top: 10px; font-size: 13px; opacity: 0.7; }
