@@ -8,12 +8,14 @@ let db = null;
 
 if (USE_FIREBASE) {
   try {
-    const [{ initializeApp }, firestore] = await Promise.all([
+    const [{ initializeApp }, firestore, analyticsMod] = await Promise.all([
       import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
       import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'),
+      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js'),
     ]);
     const app = initializeApp(firebaseConfig);
     db = firestore.getFirestore(app);
+    try { analyticsMod.getAnalytics(app); } catch (e) { /* analytics optional */ }
     window.__fs = firestore; // helpers below
   } catch (e) {
     console.warn('Firebase init failed, using localStorage fallback.', e);

@@ -1,10 +1,11 @@
-// Fill this in from your Firebase project settings (Project settings -> General -> Your apps -> Web app).
-// Leave the placeholder values and the game will run on localStorage instead of Firebase.
+// Firebase web app configuration (project: online-ha)
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCKqsxIC2aGBR0UnejiXlIaJeKAfdW_Zp0",
+  authDomain: "online-ha.firebaseapp.com",
+  databaseURL: "https://online-ha-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "online-ha",
+  storageBucket: "online-ha.firebasestorage.app",
+  messagingSenderId: "1033988386517",
+  appId: "1:1033988386517:web:ff4c6befb8fcee7e84bc5c",
+  measurementId: "G-QLLSTFR1XX"
 };
