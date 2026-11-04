@@ -11,12 +11,14 @@ const routes = {
 };
 
 let currentCleanup = null;
+let renderVersion = 0;
 
 export function navigate(page) {
   location.hash = '#/' + page;
 }
 
 async function render(page) {
+  const version = ++renderVersion;
   try {
     if (!routes[page]) page = 'main';
     if (currentCleanup) { try { currentCleanup(); } catch (e) {} currentCleanup = null; }
@@ -32,10 +34,13 @@ async function render(page) {
     document.head.appendChild(link);
 
     await ensurePlayer();
+    if (version !== renderVersion) return;
     const mod = await routes[page]();
+    if (version !== renderVersion) return;
     if (typeof mod.cleanup === 'function') currentCleanup = mod.cleanup;
-    mod.render(app);
+    await mod.render(app);
   } catch (e) {
+    if (version !== renderVersion) return;
     console.error('Render failed:', e);
     const app = document.getElementById('app');
     app.innerHTML = `<div style="padding:40px;font-family:sans-serif;color:#fff">

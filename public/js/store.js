@@ -5,18 +5,31 @@ import { firebaseConfig } from './firebase-config.js';
 
 const USE_FIREBASE = !!firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('YOUR_');
 const LS_KEY = 'pirate_wars_players';
+const DIRTY_KEY = 'pirate_wars_pending_sync';
 let db = null;
+
+// Neither loading the SDK nor waiting for an offline Firestore write should
+// prevent the game from starting. Once a connection stalls, use local storage
+// for the rest of this session rather than repeatedly waiting on it.
+const FIREBASE_TIMEOUT_MS = 2500;
+function withTimeout(promise) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Firebase timed out')), FIREBASE_TIMEOUT_MS);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
 
 if (USE_FIREBASE) {
   try {
-    const [{ initializeApp }, firestore, analyticsMod] = await Promise.all([
+    const [{ initializeApp }, firestore] = await withTimeout(Promise.all([
       import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
       import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'),
-      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js'),
-    ]);
+    ]));
     const app = initializeApp(firebaseConfig);
     db = firestore.getFirestore(app);
-    try { analyticsMod.getAnalytics(app); } catch (e) { /* analytics optional */ }
     window.__fs = firestore;
   } catch (e) {
     console.warn('Firebase init failed, using localStorage fallback.', e);
@@ -69,12 +82,40 @@ function lsAll() {
 function lsSaveAll(all) { localStorage.setItem(LS_KEY, JSON.stringify(all)); }
 function lsGet(code) { const p = lsAll()[code]; return p ? normalize(p) : null; }
 function lsPut(p) { const all = lsAll(); all[p.code] = p; lsSaveAll(all); return normalize(p); }
+function isDirty(code) {
+  try { return !!JSON.parse(localStorage.getItem(DIRTY_KEY) || '{}')[code]; } catch { return false; }
+}
+function setDirty(code, dirty) {
+  let pending;
+  try { pending = JSON.parse(localStorage.getItem(DIRTY_KEY) || '{}'); } catch { pending = {}; }
+  if (dirty) pending[code] = true; else delete pending[code];
+  localStorage.setItem(DIRTY_KEY, JSON.stringify(pending));
+}
+async function putPlayer(p) {
+  lsPut(p);
+  setDirty(p.code, true);
+  const snapshot = JSON.stringify(p);
+  return fb(
+    async () => {
+      const { doc, setDoc } = window.__fs;
+      await setDoc(doc(db, 'players', p.code), p);
+      // A later local save must not be marked synced by an older write.
+      if (JSON.stringify(lsAll()[p.code]) === snapshot) setDirty(p.code, false);
+      return p;
+    },
+    () => p
+  );
+}
 
 // Run a Firestore op; on ANY error fall back to local so the UI never breaks.
 async function fb(fbFn, localFn) {
   if (!db) return localFn();
-  try { return await fbFn(); }
-  catch (e) { console.warn('Firestore op failed, using localStorage fallback.', e); return localFn(); }
+  try { return await withTimeout(fbFn()); }
+  catch (e) {
+    console.warn('Firestore op failed, using localStorage fallback.', e);
+    db = null;
+    return localFn();
+  }
 }
 
 // ---------- public API ----------
@@ -83,11 +124,8 @@ export async function ensurePlayer() {
   if (!code) {
     const p = defaultPlayer();
     code = p.code;
-    await fb(
-      async () => { const { doc, setDoc } = window.__fs; await setDoc(doc(db, 'players', code), p); },
-      () => lsPut(p)
-    );
     localStorage.setItem('pirate_wars_code', code);
+    await putPlayer(p);
   }
   return getPlayer(code);
 }
@@ -98,11 +136,14 @@ export async function getCurrentCode() {
 
 export async function getPlayer(code) {
   if (!code) return null;
+  const local = lsGet(code);
+  if (local && isDirty(code)) return putPlayer(local);
   return fb(
     async () => {
       const { doc, getDoc } = window.__fs;
       const snap = await getDoc(doc(db, 'players', code));
-      return snap.exists() ? normalize({ code, ...snap.data() }) : null;
+      if (!snap.exists()) return lsGet(code);
+      return lsPut(normalize({ code, ...snap.data() }));
     },
     () => lsGet(code)
   );
@@ -110,20 +151,14 @@ export async function getPlayer(code) {
 
 export async function createPlayer(name) {
   const p = defaultPlayer(name);
-  await fb(
-    async () => { const { doc, setDoc } = window.__fs; await setDoc(doc(db, 'players', p.code), p); },
-    () => lsPut(p)
-  );
   localStorage.setItem('pirate_wars_code', p.code);
+  await putPlayer(p);
   return p;
 }
 
 export async function savePlayer(p) {
   p.level = xpToLevel(p.xp);
-  return fb(
-    async () => { const { doc, setDoc } = window.__fs; await setDoc(doc(db, 'players', p.code), p); return p; },
-    () => lsPut(p)
-  );
+  return putPlayer(p);
 }
 
 export async function searchByCode(code) {
