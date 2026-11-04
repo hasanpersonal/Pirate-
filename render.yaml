@@ -1,12 +1,10 @@
 # Render deploy config — static site served from public/
-# Create a "Static Site" (or Blueprint) in Render pointing at this repo;
-# Render reads this file automatically.
+# Dashboard (New → Static Site): Publish Directory = public
+# No catch-all rewrite: the game uses hash routing (#/page), so index.html
+# is the only entry point and assets must be served as real files.
 services:
   - type: web
     name: pirate-wars
     runtime: static
+    buildCommand: ""
     staticPublishPath: public
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html

@@ -13,9 +13,11 @@ python3 -m http.server 8000
 ## Deploy to Render (static site)
 
 1. Push this repo to GitHub.
-2. In https://dashboard.render.com → **New → Static Site** (or Blueprint) → connect the repo.
-3. Render auto-detects `render.yaml`: publish directory `public/`, SPA rewrite to `index.html`.
+2. In https://dashboard.render.com → **New → Static Site** → connect the repo.
+3. Set **Publish Directory** to exactly: `public`  ← this is the step that causes "Not Found" if missed.
 4. Deploy — you get a `https://pirate-wars.onrender.com` URL.
+
+If you deploy via **Blueprint** instead, Render reads `render.yaml` automatically (publish path `public/` + SPA rewrite). A root `index.html` also redirects to `public/` as a safety net if the publish directory is left at the repo root.
 
 ## Deploy to Firebase Hosting
 
