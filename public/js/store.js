@@ -9,10 +9,17 @@ let db = null;
 
 if (USE_FIREBASE) {
   try {
-    const [{ initializeApp }, firestore, analyticsMod] = await Promise.all([
-      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
-      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'),
-      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js'),
+    // Timeout guard: if the CDN import hangs (silently dropped packets), don't
+    // block the whole app on it — fall back to localStorage after 5s.
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firebase CDN import timed out')), 5000));
+    const [{ initializeApp }, firestore, analyticsMod] = await Promise.race([
+      Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'),
+        import('https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js'),
+      ]),
+      timeout,
     ]);
     const app = initializeApp(firebaseConfig);
     db = firestore.getFirestore(app);
