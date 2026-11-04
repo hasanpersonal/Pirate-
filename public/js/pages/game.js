@@ -8,10 +8,24 @@ import { navigate } from '../app.js';
 
 let raf = null, running = false;
 let G = null; // game state
+let session = 0;
+let removeListeners = [];
 
-export function cleanup() { running = false; if (raf) cancelAnimationFrame(raf); }
+export function cleanup() {
+  session++;
+  running = false;
+  if (raf) cancelAnimationFrame(raf);
+  removeListeners.forEach(remove => remove());
+  removeListeners = [];
+  document.body.classList.remove('portrait-block');
+}
 
-export function render(app) {
+function listen(target, event, handler) {
+  target.addEventListener(event, handler);
+  removeListeners.push(() => target.removeEventListener(event, handler));
+}
+
+export async function render(app) {
   app.innerHTML = `
     <canvas id="gameCanvas"></canvas>
 
@@ -43,7 +57,7 @@ export function render(app) {
   `;
 
   bindOrientationGuard();
-  start(app);
+  await start(app);
 }
 
 // The game must be played in landscape — block portrait play and refit the HUD.
@@ -54,17 +68,20 @@ function bindOrientationGuard() {
     overlay.classList.toggle('hidden', !portrait);
     document.body.classList.toggle('portrait-block', portrait);
   };
-  window.addEventListener('resize', check);
-  window.addEventListener('orientationchange', check);
+  listen(window, 'resize', check);
+  listen(window, 'orientationchange', check);
   if (screen.orientation && screen.orientation.addEventListener) {
-    screen.orientation.addEventListener('change', check);
+    listen(screen.orientation, 'change', check);
   }
   check();
 }
 
 async function start(app) {
+  const startSession = session;
   const code = await getCurrentCode();
   const player = await getPlayer(code);
+  if (startSession !== session) return;
+  if (!player) throw new Error('Player data is unavailable. Please reconnect and reload.');
   const ship = shipById(player.selected) || shipById('gunboat');
   const lvl = levelById('level1');
   const map = mapById(lvl.mapId);
@@ -80,7 +97,7 @@ async function start(app) {
     canvas.height = window.innerHeight;
   }
   resize();
-  window.addEventListener('resize', resize);
+  listen(window, 'resize', resize);
 
   const lvlBonus = (player.owned[ship.id] || 1) - 1;
 
@@ -160,14 +177,14 @@ function fireSkill(id, tx, ty) {
   if (def.cost > 0) p.petro = Math.max(0, p.petro - def.cost);
 
   if (id === 'attack') {
-    bombs.push(mkBomb(p.x, p.y, p.angle, 520, 25, 'player'));
+    G.bombs.push(mkBomb(p.x, p.y, p.angle, 520, 25, 'player'));
   } else if (id === 'shield') {
     p.shield = 4;
   } else if (id === 's1') {
     const s = G.ship.skills[0].id;
-    if (s === 'spread') for (let i = -1; i <= 1; i++) bombs.push(mkBomb(p.x, p.y, p.angle + i * 0.25, 520, 25, 'player'));
-    else if (s === 'barrage') for (let i = 0; i < 5; i++) bombs.push(mkBomb(tx + (Math.random() - 0.5) * 90, ty + (Math.random() - 0.5) * 90, -Math.PI / 2, 300, 30, 'player', 60));
-    else if (s === 'carpet') bombs.push(mkBomb(tx, ty, 0, 0, 90, 'player', 0, 130));
+    if (s === 'spread') for (let i = -1; i <= 1; i++) G.bombs.push(mkBomb(p.x, p.y, p.angle + i * 0.25, 520, 25, 'player'));
+    else if (s === 'barrage') for (let i = 0; i < 5; i++) G.bombs.push(mkBomb(tx + (Math.random() - 0.5) * 90, ty + (Math.random() - 0.5) * 90, -Math.PI / 2, 300, 30, 'player', 60));
+    else if (s === 'carpet') G.bombs.push(mkBomb(tx, ty, 0, 0, 90, 'player', 0, 130));
   } else if (id === 's2') {
     const s = G.ship.skills[1].id;
     if (s === 'boost') p.boost = 4;
@@ -269,13 +286,13 @@ function update(dt) {
     e.fire -= dt;
     if (e.fire <= 0) {
       e.fire = lvl.enemyFireInterval / Math.pow(lvl.ramp.fireRate, G.rampLevel - 1);
-      bombs.push(mkBomb(e.x, e.y, a, 380, 12, 'enemy'));
+      G.bombs.push(mkBomb(e.x, e.y, a, 380, 12, 'enemy'));
     }
   }
 
   // bombs
-  for (let i = bombs.length - 1; i >= 0; i--) {
-    const b = bombs[i];
+  for (let i = G.bombs.length - 1; i >= 0; i--) {
+    const b = G.bombs[i];
     if (b.delay > 0) { b.delay -= dt; continue; }
     b.x += Math.cos(b.angle) * b.speed * dt;
     b.y += Math.sin(b.angle) * b.speed * dt;
@@ -294,7 +311,7 @@ function update(dt) {
     }
     if (hit || b.life <= 0 || b.x < 0 || b.y < 0 || b.x > G.w || b.y > G.h) {
       explode(b.x, b.y, b.aoe || 40);
-      bombs.splice(i, 1);
+      G.bombs.splice(i, 1);
     }
   }
 
@@ -383,7 +400,7 @@ function draw() {
   }
 
   // bombs
-  for (const b of bombs) {
+  for (const b of G.bombs) {
     ctx.fillStyle = b.owner === 'player' ? '#ffb300' : '#ff5252';
     ctx.beginPath(); ctx.arc(b.x, b.y, b.aoe ? 8 : 5, 0, Math.PI * 2); ctx.fill();
   }
@@ -498,7 +515,7 @@ async function endBattle(won) {
       <button class="btn" id="btnHome">Main Menu</button>
     </div>`;
   app.appendChild(overlay);
-  overlay.querySelector('#btnAgain').onclick = () => { overlay.remove(); start(app); };
+  overlay.querySelector('#btnAgain').onclick = () => { overlay.remove(); start(app).catch(error => { console.error('Could not restart game:', error); navigate('main'); }); };
   overlay.querySelector('#btnHome').onclick = () => navigate('main');
 }
 

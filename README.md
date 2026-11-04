@@ -10,6 +10,15 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
+## Tests
+
+```bash
+node --experimental-vm-modules --test tests/loading.test.cjs
+```
+
+The game caches player data locally if Firebase is unavailable. Cached changes
+are uploaded when Firebase is available again (local changes take precedence).
+
 ## Deploy to Render (static site)
 
 1. Push this repo to GitHub.
