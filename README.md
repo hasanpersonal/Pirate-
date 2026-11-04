@@ -17,7 +17,7 @@ python3 -m http.server 8000
 3. Set **Publish Directory** to exactly: `public`  ← this is the step that causes "Not Found" if missed.
 4. Deploy — you get a `https://pirate-wars.onrender.com` URL.
 
-If you deploy via **Blueprint** instead, Render reads `render.yaml` automatically (publish path `public/` + SPA rewrite). A root `index.html` also redirects to `public/` as a safety net if the publish directory is left at the repo root.
+If you deploy via **Blueprint** instead, Render reads `render.yaml` automatically (publish path `public/`). No catch-all rewrite is used anywhere: the game uses hash routing (`#/page`), so `index.html` is the only entry point and JS/CSS assets must be served as real files.
 
 ## Deploy to Firebase Hosting
 

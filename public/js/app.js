@@ -17,23 +17,31 @@ export function navigate(page) {
 }
 
 async function render(page) {
-  if (!routes[page]) page = 'main';
-  if (currentCleanup) { try { currentCleanup(); } catch (e) {} currentCleanup = null; }
+  try {
+    if (!routes[page]) page = 'main';
+    if (currentCleanup) { try { currentCleanup(); } catch (e) {} currentCleanup = null; }
 
-  const app = document.getElementById('app');
-  app.innerHTML = '';
-  app.className = 'page-' + page;
+    const app = document.getElementById('app');
+    app.innerHTML = '';
+    app.className = 'page-' + page;
 
-  // one css file per page
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = `css/pages/${page}.css`;
-  document.head.appendChild(link);
+    // one css file per page
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `css/pages/${page}.css`;
+    document.head.appendChild(link);
 
-  await ensurePlayer();
-  const mod = await routes[page]();
-  if (typeof mod.cleanup === 'function') currentCleanup = mod.cleanup;
-  mod.render(app);
+    await ensurePlayer();
+    const mod = await routes[page]();
+    if (typeof mod.cleanup === 'function') currentCleanup = mod.cleanup;
+    mod.render(app);
+  } catch (e) {
+    console.error('Render failed:', e);
+    const app = document.getElementById('app');
+    app.innerHTML = `<div style="padding:40px;font-family:sans-serif;color:#fff">
+      Failed to load page "${page}". <button onclick="location.reload()">Reload</button>
+      <pre style="opacity:.7">${String(e && e.message || e)}</pre></div>`;
+  }
 }
 
 window.addEventListener('hashchange', () => {

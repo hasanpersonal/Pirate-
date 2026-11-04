@@ -1,5 +1,6 @@
-// Storage layer. Uses Firebase Firestore when firebase-config.js is filled in,
-// otherwise falls back to localStorage so the game is fully playable offline/dev.
+// Storage layer. Uses Firebase Firestore when available, but EVERY Firestore
+// call is wrapped so that if it fails (e.g. security rules deny, network blocked)
+// the game silently falls back to localStorage — the app must never blank-screen.
 import { firebaseConfig } from './firebase-config.js';
 
 const USE_FIREBASE = !!firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('YOUR_');
@@ -16,7 +17,7 @@ if (USE_FIREBASE) {
     const app = initializeApp(firebaseConfig);
     db = firestore.getFirestore(app);
     try { analyticsMod.getAnalytics(app); } catch (e) { /* analytics optional */ }
-    window.__fs = firestore; // helpers below
+    window.__fs = firestore;
   } catch (e) {
     console.warn('Firebase init failed, using localStorage fallback.', e);
     db = null;
@@ -51,26 +52,41 @@ function defaultPlayer(name) {
 
 function xpToLevel(xp) { return Math.floor(xp / 100) + 1; }
 
-function normalize(p) { return { ...defaultPlayer(''), ...p, stats: { kills: 0, wins: 0, battles: 0, ...(p.stats || {}) }, owned: { gunboat: 1, ...(p.owned || {}) }, tasks: p.tasks || {} }; }
+function normalize(p) {
+  return {
+    ...defaultPlayer(''),
+    ...p,
+    stats: { kills: 0, wins: 0, battles: 0, ...(p.stats || {}) },
+    owned: { gunboat: 1, ...(p.owned || {}) },
+    tasks: p.tasks || {},
+  };
+}
 
 // ---------- localStorage implementation ----------
 function lsAll() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
 }
 function lsSaveAll(all) { localStorage.setItem(LS_KEY, JSON.stringify(all)); }
+function lsGet(code) { const p = lsAll()[code]; return p ? normalize(p) : null; }
+function lsPut(p) { const all = lsAll(); all[p.code] = p; lsSaveAll(all); return normalize(p); }
 
-// ---------- public API (same signatures for both backends) ----------
+// Run a Firestore op; on ANY error fall back to local so the UI never breaks.
+async function fb(fbFn, localFn) {
+  if (!db) return localFn();
+  try { return await fbFn(); }
+  catch (e) { console.warn('Firestore op failed, using localStorage fallback.', e); return localFn(); }
+}
+
+// ---------- public API ----------
 export async function ensurePlayer() {
   let code = localStorage.getItem('pirate_wars_code');
   if (!code) {
     const p = defaultPlayer();
     code = p.code;
-    if (db) {
-      const { doc, setDoc } = window.__fs;
-      await setDoc(doc(db, 'players', code), p);
-    } else {
-      const all = lsAll(); all[code] = p; lsSaveAll(all);
-    }
+    await fb(
+      async () => { const { doc, setDoc } = window.__fs; await setDoc(doc(db, 'players', code), p); },
+      () => lsPut(p)
+    );
     localStorage.setItem('pirate_wars_code', code);
   }
   return getPlayer(code);
@@ -82,36 +98,32 @@ export async function getCurrentCode() {
 
 export async function getPlayer(code) {
   if (!code) return null;
-  if (db) {
-    const { doc, getDoc } = window.__fs;
-    const snap = await getDoc(doc(db, 'players', code));
-    return snap.exists() ? normalize({ code, ...snap.data() }) : null;
-  }
-  const p = lsAll()[code];
-  return p ? normalize(p) : null;
+  return fb(
+    async () => {
+      const { doc, getDoc } = window.__fs;
+      const snap = await getDoc(doc(db, 'players', code));
+      return snap.exists() ? normalize({ code, ...snap.data() }) : null;
+    },
+    () => lsGet(code)
+  );
 }
 
 export async function createPlayer(name) {
   const p = defaultPlayer(name);
-  if (db) {
-    const { doc, setDoc } = window.__fs;
-    await setDoc(doc(db, 'players', p.code), p);
-  } else {
-    const all = lsAll(); all[p.code] = p; lsSaveAll(all);
-  }
+  await fb(
+    async () => { const { doc, setDoc } = window.__fs; await setDoc(doc(db, 'players', p.code), p); },
+    () => lsPut(p)
+  );
   localStorage.setItem('pirate_wars_code', p.code);
   return p;
 }
 
 export async function savePlayer(p) {
   p.level = xpToLevel(p.xp);
-  if (db) {
-    const { doc, setDoc } = window.__fs;
-    await setDoc(doc(db, 'players', p.code), p);
-  } else {
-    const all = lsAll(); all[p.code] = p; lsSaveAll(all);
-  }
-  return p;
+  return fb(
+    async () => { const { doc, setDoc } = window.__fs; await setDoc(doc(db, 'players', p.code), p); return p; },
+    () => lsPut(p)
+  );
 }
 
 export async function searchByCode(code) {
@@ -121,7 +133,8 @@ export async function searchByCode(code) {
 export async function addRewards(code, { gold = 0, diamonds = 0, petroleum = 0, xp = 0 }) {
   const p = await getPlayer(code);
   if (!p) return null;
-  p.gold += gold; p.diamonds += diamonds; p.petroleum = Math.max(0, Math.min(100, p.petroleum + petroleum));
+  p.gold += gold; p.diamonds += diamonds;
+  p.petroleum = Math.max(0, Math.min(100, p.petroleum + petroleum));
   p.xp += xp; p.level = xpToLevel(p.xp);
   return savePlayer(p);
 }
